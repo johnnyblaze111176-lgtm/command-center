@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Command Center</title>
+  <style>
+    :root{color-scheme:dark;}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#0b0d12;color:#e9eefc;}
+    .wrap{max-width:980px;margin:0 auto;padding:28px;}
+    .card{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10);border-radius:16px;padding:18px 18px 16px;margin:14px 0;}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    input,textarea,button{border-radius:12px;border:1px solid rgba(255,255,255,0.14);background:rgba(0,0,0,0.25);color:#e9eefc;padding:10px 12px;font-size:14px;}
+    input{min-width:260px;flex:1}
+    textarea{width:100%;min-height:140px;resize:vertical}
+    button{cursor:pointer;background:#6d4cff;border-color:#6d4cff;font-weight:600}
+    button.secondary{background:transparent;border-color:rgba(255,255,255,0.18)}
+    .muted{color:rgba(233,238,252,0.68);font-size:13px}
+    .pill{display:inline-block;padding:4px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.14);font-size:12px}
+    pre{white-space:pre-wrap;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:12px;margin:10px 0 0}
+    a{color:#9fc2ff}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 style="margin:0 0 6px;">Command Center</h1>
+    <div class="muted">This is the bundled dashboard UI served from <code>app/web/index.html</code>. API docs are at <a href="/docs">/docs</a>.</div>
+
+    <div class="card">
+      <div class="row" style="align-items:center;justify-content:space-between">
+        <div>
+          <div class="pill" id="statusPill">Checking…</div>
+          <div class="muted" id="pingOut" style="margin-top:6px;"></div>
+        </div>
+        <div class="row">
+          <button class="secondary" id="clearTokenBtn">Clear token</button>
+          <button class="secondary" id="openDocsBtn">Open /docs</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 10px;">Login (Admin)</h3>
+      <div class="row">
+        <input id="email" placeholder="email" autocomplete="username" />
+        <input id="password" placeholder="password" type="password" autocomplete="current-password" />
+        <button id="loginBtn">Login</button>
+      </div>
+      <div class="muted" id="loginMsg" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 10px;">Assistant</h3>
+      <textarea id="prompt" placeholder="Ask something…"></textarea>
+      <div class="row" style="margin-top:10px;">
+        <button id="askBtn">Send</button>
+        <button class="secondary" id="pingBtn">Ping</button>
+      </div>
+      <pre id="answer" style="display:none;"></pre>
+      <div class="muted" style="margin-top:10px;">
+        Uses <code>POST /api/assistant</code> with your bearer token.
+      </div>
+    </div>
+  </div>
+
+<script>
+const qs = (id) => document.getElementById(id);
+
+function setStatus(ok, text){
+  const pill = qs("statusPill");
+  pill.textContent = text;
+  pill.style.borderColor = ok ? "rgba(80,255,170,0.55)" : "rgba(255,90,90,0.6)";
+  pill.style.background = ok ? "rgba(80,255,170,0.12)" : "rgba(255,90,90,0.12)";
+}
+
+function getToken(){ return localStorage.getItem("cc_token") || ""; }
+function setToken(t){ localStorage.setItem("cc_token", t); }
+function clearToken(){ localStorage.removeItem("cc_token"); }
+
+async function api(path, opts={}){
+  const headers = Object.assign({"Content-Type":"application/json"}, opts.headers||{});
+  const token = getToken();
+  if(token) headers["Authorization"] = "Bearer " + token;
+  const res = await fetch(path, Object.assign({}, opts, {headers}));
+  const isJson = (res.headers.get("content-type") || "").includes("application/json");
+  const data = isJson ? await res.json().catch(()=>null) : await res.text().catch(()=>null);
+  if(!res.ok){
+    const msg = (data && data.detail) ? data.detail : (typeof data === "string" ? data : res.statusText);
+    throw new Error(msg || ("HTTP " + res.status));
+  }
+  return data;
+}
+
+async function doPing(){
+  try{
+    const r = await api("/api/ping", {method:"GET", headers:{}});
+    setStatus(true, "API OK");
+    qs("pingOut").textContent = "Server time: " + r.t;
+  }catch(e){
+    setStatus(false, "API not reachable");
+    qs("pingOut").textContent = String(e.message || e);
+  }
+}
+
+qs("openDocsBtn").onclick = () => window.open("/docs", "_blank");
+qs("clearTokenBtn").onclick = () => { clearToken(); qs("loginMsg").textContent = "Token cleared."; };
+
+qs("pingBtn").onclick = doPing;
+
+qs("loginBtn").onclick = async () => {
+  qs("loginMsg").textContent = "Logging in…";
+  try{
+    const email = qs("email").value.trim();
+    const password = qs("password").value;
+    const r = await api("/api/auth/login", {method:"POST", body: JSON.stringify({email, password})});
+    setToken(r.access_token);
+    qs("loginMsg").textContent = "Logged in. Token stored in browser.";
+  }catch(e){
+    qs("loginMsg").textContent = "Login failed: " + (e.message || e);
+  }
+};
+
+qs("askBtn").onclick = async () => {
+  const out = qs("answer");
+  out.style.display="block";
+  out.textContent = "Thinking…";
+  try{
+    const prompt = qs("prompt").value;
+    const r = await api("/api/assistant", {method:"POST", body: JSON.stringify({prompt})});
+    out.textContent = r.text || JSON.stringify(r, null, 2);
+  }catch(e){
+    out.textContent = "Error: " + (e.message || e);
+  }
+};
+
+doPing();
+</script>
+</body>
+</html>
