@@ -3,49 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Command Center Dashboard</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="static/style.css">
 </head>
 <body>
-    <div id="app">
-        <div id="login-container" class="container">
-            <div class="login-box">
-                <h1>Command Center</h1>
-                <form id="login-form">
-                    <input type="email" id="email" placeholder="Email" required>
-                    <input type="password" id="password" placeholder="Password" required>
-                    <button type="submit">Login</button>
-                </form>
-                <div id="login-error" class="error-message"></div>
-            </div>
-        </div>
-
-        <div id="dashboard-container" class="container" style="display:none;">
-            <div class="dashboard">
-                <div class="dashboard-header">
-                    <h1>Command Center Dashboard</h1>
-                    <button id="logout-btn" class="logout-btn">Logout</button>
-                </div>
-
-                <div class="dashboard-section">
-                    <h2>System Status</h2>
-                    <div id="status" class="status-box">
-                        <p>Checking system health...</p>
-                    </div>
-                </div>
-
-                <div class="dashboard-section">
-                    <h2>Assistant</h2>
-                    <form id="assistant-form">
-                        <textarea id="prompt" placeholder="Enter your prompt here..." required></textarea>
-                        <button type="submit">Send</button>
-                    </form>
-                    <div id="response" class="response-box"></div>
-                </div>
-            </div>
-        </div>
+    <div class="dashboard">
+        <h1>Dashboard Interface</h1>
+        <p>Welcome to the dashboard!</p>
+        <!-- Add your dashboard content here -->
     </div>
-
-    <script src="/static/app.js"></script>
+    <script src="static/app.js"></script>
 </body>
 </html>
